@@ -1,0 +1,80 @@
+name: Deploy Nest
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - 'master'
+      - 'fix/**'
+#    paths-ignore:
+#      - '.github/workflows/*'
+#      - '.github/workflows/**'
+  pull_request:
+    types: [opened, edited, reopened]
+env:
+  STRING_ENV: ${{ secrets.STRING_ENV }}
+  NUMBER_ENV: 22
+jobs:
+  my-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get repo
+        uses: actions/checkout@v3
+      - name: Cache deps
+        uses: actions/cache@v3
+        with:
+          path: ~/.npm
+          key: node-modules-${{ hashFiles('**/package-lock.json') }}
+      - name: Install deps
+#        better then npm i
+        run: npm ci
+      - name: Test back
+        run: npm run test
+  my-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get repo
+        uses: actions/checkout@v3
+      - name: Cache deps
+        uses: actions/cache@v3
+        with:
+          path: ~/.npm
+          key: node-modules-${{ hashFiles('**/package-lock.json') }}
+      - name: Install deps
+        run: npm ci
+      - name: Lint back
+        run: npm run lint
+  my-build:
+    needs: [my-test, my-lint]
+#    don't stop on errors
+    continue-on-error: true
+    strategy:
+      matrix:
+        node-version: [16, 18]
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    env:
+      STRING_ENV2: ${{ secrets.STRING_ENV2 }}
+      NUMBER_ENV2: 11
+    steps:
+      - name: Get repo
+        uses: actions/checkout@v3
+      - name: Node versions
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ matrix.node-version }}
+      - name: Cache deps
+        uses: actions/cache@v3
+        with:
+          path: ~/.npm
+          key: node-modules-${{ hashFiles('**/package-lock.json') }}
+      - name: Install deps
+        run: npm ci
+      - name: Build back
+        run: npm run build
+      - name: Logging
+        run: |
+          echo build complete...
+          echo "${{ env.STRING_ENV }}
+          echo "${{ env.NUMBER_ENV }}
+          echo "${{ env.STRING_ENV2 }}
+          echo "${{ env.NUMBER_ENV2 }}
